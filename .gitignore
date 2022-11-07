@@ -1,0 +1,4 @@
+.put.ts
+*.pyc
+Thumbs.db*
+__pycache__
