@@ -1,2 +1,2 @@
-MODE = 1
-#MODE = 2
+#MODE = 1
+MODE = 2

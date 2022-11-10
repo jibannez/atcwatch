@@ -17,7 +17,7 @@ except:
     
 from fonts import notosans_32 as font
 
-import config
+from . import config
 
 WHITE = const(0xFFFF)
 BLACK = const(0x0000)
@@ -68,7 +68,10 @@ def tcplistener(twatch, mode=1):
         # Parse message
         severity = request[0] 
         aircrafts = request[1:].decode()
-        aircraftlist = aircrafts.split('-')
+        if '-' in aircrafts:
+            aircraftlist = aircrafts.split('-')
+        elif '_' in aircrafts:
+            aircraftlist = aircrafts.split('_')
         
         # Scale severity in 0-255 interval
         scaled = 8*severity-1

@@ -11,17 +11,17 @@
 import time
 from machine import I2C,Pin,reset,SPI
 import network
-import config
 
-from drivers.st7789py import ST7789, BLACK, WHITE, BLUE, GREEN, RED, CYAN, MAGENTA, YELLOW
-from drivers import axp202c as axp202
-from drivers import pcf8563
-from drivers import focaltouch
+from .st7789py import ST7789, BLACK, WHITE, BLUE, GREEN, RED, CYAN, MAGENTA, YELLOW
+from . import axp202c as axp202
+from . import pcf8563
+from . import focaltouch
+from . import config
+from . import buzzer
+from . import tcpserver
 if config.ENABLE_BMA:
-    from drivers import bma423
-import buzzer
-
-
+    from . import bma423
+    
 # THESE ARE BITMAP BIOS FONTS FOR USE WITH text FUNCTION
 #from fonts import vga1_8x16 as font
 #from fonts import vga2_bold_16x32 as font
@@ -32,8 +32,6 @@ from fonts import vga1_8x16 as font
 # Fonts larger than 16 pixels require frozing the modules
 #from fonts import chango_regular_16 as font
 #from fonts import notosans_32 as font
-
-
 
     
 def maprange(point,fromrange,torange):
@@ -213,6 +211,38 @@ class LILY(object):
             else:
                 time.sleep_ms(50)
                 
+    def runloop(self, MODE):
+        tcpserver.tcplistener(self, MODE)
+        
+    def select_mode(self):
+        # Show message
+        self.disp.fill(BLACK)
+        self.disp.text(font,"MODE 1",10,50,fg=WHITE, bg=BLACK)
+        self.disp.text(font,"MODE 2",10,150,fg=WHITE, bg=BLACK)
+        
+        # Wait for input
+        ft=self.ft
+        while True:
+            if ft.touched:
+                touches=self.maptouch(ft.touches)
+                touch=touches[0]
+                break
+                #self.disp.pixel(touch['x'],touch['y'],st7789.RED)
+            else:
+                time.sleep_ms(50)
+        # Process touch event
+        self.disp.fill(BLACK)
+        if touch['y'] < 100:
+            self.disp.text(font,"Selected MODE 1",10,100,fg=WHITE, bg=BLACK)
+            mode = 1
+        else:
+            self.disp.text(font,"Selected MODE 2",10,100,fg=WHITE, bg=BLACK)
+            mode = 2
+        # Clear screen and turn off
+        time.sleep(2)
+        self.disp.fill(BLACK)
+        self.bl.value(0)
+        return mode
 
 # i2c0        
 # scan 25 (0x19) bosch BMA423 accellerometer

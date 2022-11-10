@@ -7,17 +7,19 @@
 # Universidad Autónoma de Madrid
 #
 # © Copyright 2022 Jorge Ibáñez Gijón. All rights reserved
+
+
 import _thread as thread
-import lily
-from tcpserver import tcplistener
-from mode import MODE
+from drivers.lily import LILY
+#from mode import MODE
 
 def main():
     # Initialize Lily manager object
-    twatch = lily.LILY()
+    twatch = LILY()
     # Launch server until killed by keyboard interrupt
     try:
-        tcplistener(twatch, MODE)
+        mode = twatch.select_mode()
+        twatch.runloop(mode)
     except KeyboardInterrupt:
         thread.exit()
 
