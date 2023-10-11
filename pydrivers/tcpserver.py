@@ -47,7 +47,7 @@ def tcplistener(twatch, mode=1):
         config.NOTIFICATION_TIME = 4
         
     ########################################            
-    # Create server listening on UDP socket
+    # Create server listening on TCP socket
     ########################################            
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((config.HOST, config.PORT))
@@ -59,82 +59,101 @@ def tcplistener(twatch, mode=1):
     ########################################        
     twatch.bl.value(0)
     while True:
-        #Accept connection from client with new severity message
-        conn, addr = s.accept()
-        request = conn.recv(1024)
-        conn.send(b'ACK')
-        conn.close()
-        
-        # Parse message
-        severity = request[0] 
-        aircrafts = request[1:].decode()
-        if '-' in aircrafts:
-            aircraftlist = aircrafts.split('-')
-        elif '_' in aircrafts:
-            aircraftlist = aircrafts.split('_')
-        
-        # Scale severity in 0-255 interval
-        scaled = 8*severity-1
-        
-        # Show feedback
-        if config.DEBUG_PRINT:
-            print('Got a connection from %s' % str(addr))
-            print('Severity = %d' % severity)        
-            print('Aircrafts = %s' % aircrafts)        
-            print("New severity=%d; Scaled=%d" % (severity,scaled))
+        # Enclose all loop in a try statement because we do not want it
+        # to fail under no circumstance. Exceptions are simply signaled so,
+        # if they start to appear, the hardware must be debugged.
+        try:
+            #Accept connection from client with new severity message
+            conn, addr = s.accept()
+            request = conn.recv(1024)
+            conn.send(b'ACK')
+            conn.close()
             
-        ########################################        
-        # Deal with message according to config
-        ########################################        
-        if config.SHOW_COLOR:
-            color = color565(scaled, g=0, b=255-scaled)
-            twatch.disp.fill(color)
-            twatch.bl.value(config.BACKLIGHTLEVEL)
-            
-        if config.SHOW_TEXT:
-            if config.SHOW_COLOR == False:
-                twatch.disp.fill(BLACK)
-                twatch.bl.value(config.BACKLIGHTLEVEL)
-                color = BLACK
+            # Parse message, in a try block to avoid any issues with malformed input
+            # Any remaining exceptions are printed out because they indicate a harware issue
+            try:
+                severity = request[0] 
+                aircrafts = request[1:].decode()
+                if '-' in aircrafts:
+                    aircraftlist = aircrafts.split('-')
+                elif '_' in aircrafts:
+                    aircraftlist = aircrafts.split('_')
+                else:
+                    # If the message does not conform to the expected format, 
+                    # the default behavior is to print it verbatim.
+                    # Fixes a bug discovered using malformed messages for testing.
+                    aircraftlist = []
+            except:
+                # Next loop, because the message could not be parsed
+                continue
                 
-            if len(aircraftlist) == 2:
-                twatch.disp.write(font, aircraftlist[0], 40, 80, fg=WHITE, bg=color)
-                twatch.disp.write(font, aircraftlist[1], 40, 140, fg=WHITE, bg=color)
-            else:
-                twatch.disp.write(font, aircrafts, 1, 100, fg=WHITE, bg=color)            
             
-        ########################################
-        # It must always vibrate
-        ########################################
-        twatch.buzz.vibrate(1, severity)
-        
-        ########################################        
-        # Notification must appear at least 
-        # NOTIFICATION_TIME seconds        
-        ########################################        
-        time.sleep(config.NOTIFICATION_TIME)
-        
-        ########################################        
-        # Wait for touch event if configured to
-        ########################################        
-        if config.WAIT_FOR_TOUCH:
-            twatch.touched = False # reset state
-            while twatch.touched == False:
-                time.sleep(1)
-            twatch.touched = False # Reset the touched state        
-        
-        ########################################        
-        # Turn off vibration
-        ########################################                
-        twatch.buzz.off() # Turn off buzzer
-
-        ########################################                            
-        # Switch color and turn off screen if configured
-        ########################################        
-        if config.SHOW_COLOR or config.SHOW_TEXT:        
-            twatch.disp.fill(config.BGCOLOR)
-            time.sleep(2) # Show the green screen for a while before turning off
-            twatch.bl.value(0) # Turn off screen backlight
+            # Scale severity in 0-255 interval
+            scaled = 8*severity-1
+            
+            # Show feedback
+            if config.DEBUG_PRINT:
+                print('Got a connection from %s' % str(addr))
+                print('Severity = %d' % severity)        
+                print('Aircrafts = %s' % aircrafts)        
+                print("New severity=%d; Scaled=%d" % (severity,scaled))
+                
+            ########################################        
+            # Deal with message according to config
+            ########################################        
+            if config.SHOW_COLOR:
+                color = color565(scaled, g=0, b=255-scaled)
+                twatch.disp.fill(color)
+                twatch.bl.value(config.BACKLIGHTLEVEL)
+                
+            if config.SHOW_TEXT:
+                if config.SHOW_COLOR == False:
+                    twatch.disp.fill(BLACK)
+                    twatch.bl.value(config.BACKLIGHTLEVEL)
+                    color = BLACK
+                    
+                if len(aircraftlist) == 2:
+                    # The message contained the names of two aircrafts in conflict
+                    twatch.disp.write(font, aircraftlist[0], 40, 80, fg=WHITE, bg=color)
+                    twatch.disp.write(font, aircraftlist[1], 40, 140, fg=WHITE, bg=color)
+                else:
+                    # Most likely the message is part of a test
+                    twatch.disp.write(font, aircrafts, 1, 100, fg=WHITE, bg=color)            
+                
+            ########################################
+            # Regardless of configuration it must always vibrate
+            ########################################
+            twatch.buzz.vibrate(1, severity)
+            
+            ########################################        
+            # Notification must appear at least 
+            # NOTIFICATION_TIME seconds        
+            ########################################        
+            time.sleep(config.NOTIFICATION_TIME)
+            
+            ########################################        
+            # Wait for touch event if configured to
+            ########################################        
+            if config.WAIT_FOR_TOUCH:
+                twatch.touched = False # reset state
+                while twatch.touched == False:
+                    time.sleep(1)
+                twatch.touched = False # Reset the touched state        
+            
+            ########################################        
+            # Turn off vibration
+            ########################################                
+            twatch.buzz.off() # Turn off buzzer
+    
+            ########################################                            
+            # Switch color and turn off screen if configured
+            ########################################        
+            if config.SHOW_COLOR or config.SHOW_TEXT:        
+                twatch.disp.fill(config.BGCOLOR)
+                time.sleep(2) # Show the green screen for a while before turning off
+                twatch.bl.value(0) # Turn off screen backlight
+        except:
+            print('There was an exception on tcplistener, not dealing with it')
     
     
 def client(msg=config.TEST_MESG, host='192.168.4.1', port=config.PORT):
